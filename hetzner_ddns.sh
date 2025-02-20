@@ -322,17 +322,31 @@ pick_record() {
 }
 
 set_records() {
+    # alternatively work with a variable
+    old_ip_addr_file="/var/log/${self}_old_ip.txt"
+
     # Get my public IP address
     if get_my_ip_addr; then
-        # Update all records if possible
-        for current_record in $records_escaped; do
-            current_record="$(echo "$current_record" | sed 's:\\::')"
-            record_ipv4="$(pick_record "$current_record" "$records_ipv4")"
-            record_ipv6="$(pick_record "$current_record" "$records_ipv6")"
-            if [ -n "$record_ipv4" ] || [ -n "$record_ipv6" ]; then
-                get_record_ip_addr && set_record
-            fi
-        done
+		if [ "$(wc -l < "$old_ip_addr_file")" -eq 0 ]; then
+		  echo "$ipv4_cur" > "$old_ip_addr_file"
+		fi
+
+		if [ "$ipv4_cur" != "$(cat "$old_ip_addr_file")" ]; then
+          # Update all records if possible
+          for current_record in $records_escaped; do
+              current_record="$(echo "$current_record" | sed 's:\\::')"
+              record_ipv4="$(pick_record "$current_record" "$records_ipv4")"
+              record_ipv6="$(pick_record "$current_record" "$records_ipv6")"
+              if [ -n "$record_ipv4" ] || [ -n "$record_ipv6" ]; then
+                  get_record_ip_addr && set_record
+              fi
+          done
+          echo "$ipv4_cur" > "$old_ip_addr_file"
+# optionally log this?:
+#        else
+#		  printf '[%s] Nothing to do - ip has not changed\n' "$(date '+%Y-%m-%d %H:%M:%S')" \
+#		  | tee -a "/var/log/$self.log" 
+        fi
     fi
 }
 
